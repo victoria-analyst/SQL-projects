@@ -1,0 +1,145 @@
+ЗАПИТ СТВОРЕННЯ ПРЕДСТАВЛЕННЯ
+
+
+CREATE VIEW Students.sql_module_sierkova AS 
+
+
+(WITH ac_count AS
+(SELECT
+      DISTINCT s.date,
+      sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed,
+      COUNT(DISTINCT ac.id) AS account_cnt
+FROM `DA.account` AS ac
+JOIN `DA.account_session` AS acs
+ON ac.id = acs.account_id
+JOIN `DA.session` AS s
+ON acs.ga_session_id = s.ga_session_id
+JOIN `DA.session_params` sp
+ON s.ga_session_id = sp.ga_session_id
+GROUP BY s.date,
+      sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed),
+
+
+msg AS
+(SELECT DISTINCT
+      s.date,
+      sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed,
+      COUNT(DISTINCT es.id_message) AS sent_msg,
+      COUNT(DISTINCT eo.id_message) AS open_msg,
+      COUNT(DISTINCT ev.id_message) AS visit_msg,
+FROM `DA.email_sent` es
+LEFT JOIN `DA.email_open` eo
+ON es.id_message = eo.id_message
+LEFT JOIN `DA.email_visit` ev
+ON es.id_message = ev.id_message
+JOIN `DA.account_session` AS acs
+ON es.id_account = acs.account_id
+JOIN `DA.session` AS s
+ON acs.ga_session_id = s.ga_session_id
+JOIN `DA.session_params` sp
+ON s.ga_session_id = sp.ga_session_id
+JOIN `DA.account` AS ac
+ON es.id_account = ac.id
+GROUP BY s.date, sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed),
+
+
+--об'єднуємо
+final AS
+(SELECT date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed,
+      account_cnt,
+      0 AS sent_msg,
+      0 AS open_msg,
+      0 AS visit_msg
+FROM ac_count
+
+
+UNION ALL
+
+
+SELECT date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed,
+      0 AS account_cnt,
+      sent_msg,
+      open_msg,
+      visit_msg
+FROM msg)
+
+
+--схлопуємо нулі
+SELECT date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed,
+      SUM(account_cnt) AS account_cnt,
+      SUM(sent_msg) AS sent_msg,
+      SUM(open_msg) AS open_msg,
+      SUM(visit_msg) AS visit_msg
+FROM final
+GROUP BY date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed)
+
+
+
+
+ФІНАЛЬНИЙ ЗАПИТ
+
+
+WITH total_count AS
+(SELECT date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed,
+      account_cnt,
+      sent_msg,
+      open_msg,
+      visit_msg,
+      COUNT(DISTINCT account_cnt) OVER(partition by country) AS total_country_account_cnt,
+      COUNT(DISTINCT sent_msg) OVER(partition by country) AS total_country_sent_cnt
+FROM Students.sql_module_sierkova),
+
+
+rank_total_count AS
+(SELECT date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed,
+      account_cnt,
+      sent_msg,
+      open_msg,
+      visit_msg,
+      total_country_account_cnt,
+      total_country_sent_cnt,
+      DENSE_RANK() OVER(ORDER BY total_country_account_cnt) AS rank_total_country_account_cnt,
+      DENSE_RANK() OVER(ORDER BY total_country_sent_cnt) AS rank_total_country_sent_cnt
+FROM total_count)
+
+
+SELECT date,
+      country,
+      send_interval,
+      is_verified,
+      is_unsubscribed,
+      account_cnt,
+      sent_msg,
+      open_msg,
+      visit_msg,
+      total_country_account_cnt,
+      total_country_sent_cnt,
+      rank_total_country_account_cnt,
+      rank_total_country_sent_cnt
+FROM rank_total_count
+WHERE (rank_total_country_account_cnt <= 10 OR rank_total_country_sent_cnt <= 10) AND country != '(not set)'
+ORDER BY date DESC, country;

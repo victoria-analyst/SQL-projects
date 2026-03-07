@@ -1,0 +1,144 @@
+WITH
+  revenue_usd AS (
+  SELECT
+    s.date,
+    p.category,
+    SUM(p.price) AS revenue
+  FROM
+    DA.order o
+  JOIN
+    DA.product p
+  ON
+    o.item_id = p.item_id
+  JOIN
+    DA.session s
+  ON
+    o.ga_session_id = s.ga_session_id
+  GROUP BY
+    s.date,
+    p.category ),
+
+
+ 
+  email_metrics AS (
+  SELECT
+    DATE_ADD(s.date, INTERVAL ems.sent_date DAY) AS sent_date, category,
+    COUNT(DISTINCT ems.id_message) AS sent_msg,
+    COUNT(DISTINCT eo.id_message) AS open_msg,
+    COUNT(DISTINCT ev.id_message) AS click_msg
+  FROM
+    DA.email_sent ems
+  JOIN
+    DA.account_session acs
+  ON
+    ems.id_account = acs.account_id
+  JOIN
+    DA.session s
+  ON
+    acs.ga_session_id = s.ga_session_id
+  LEFT JOIN
+    DA.email_open eo
+  ON
+    ems.id_message = eo.id_message
+  LEFT JOIN
+    DA.email_visit ev
+  ON
+    ems.id_message = ev.id_message
+  LEFT JOIN `DA.order` AS o
+  ON s.ga_session_id = o.ga_session_id
+  JOIN `DA.product` AS p
+  ON o.item_id = p.item_id
+  GROUP BY
+    DATE_ADD(s.date, INTERVAL ems.sent_date DAY), category),
+
+
+
+
+  registrations AS (
+  SELECT
+    s.date, category,
+    COUNT(ac.account_id) AS account_cnt
+  FROM
+    DA.account_session ac
+  JOIN
+    DA.session s
+  ON
+    ac.ga_session_id = s.ga_session_id
+  JOIN `DA.order` AS o
+  ON s.ga_session_id = o.ga_session_id
+  JOIN `DA.product` AS p
+  ON o.item_id = p.item_id
+  GROUP BY
+    s.date, category ),
+
+
+
+
+  final AS (
+  SELECT
+    date,
+    category,
+    revenue,
+    0 AS cost,
+    0 sent_msg,
+    0 AS open_msg,
+    0 AS click_msg,
+    0 AS account_cnt
+  FROM
+    revenue_usd
+  UNION ALL
+  SELECT
+    psc.date,
+    category,
+    0 AS revenue,
+    cost,
+    0 sent_msg,
+    0 AS open_msg,
+    0 AS click_msg,
+    0 AS account_cnt
+  FROM
+    DA.paid_search_cost AS psc
+  JOIN
+    DA.session s
+  ON
+    psc.date = s.date
+  JOIN `DA.order` AS o
+  ON s.ga_session_id = o.ga_session_id
+  JOIN `DA.product` AS p
+  ON o.item_id = p.item_id
+ 
+  UNION ALL
+  SELECT
+    sent_date, category,
+    0 AS revenue,
+    0 AS cost,
+    sent_msg,
+    open_msg,
+    click_msg,
+    0 AS account_cnt
+  FROM
+    email_metrics
+  UNION ALL
+  SELECT
+    date, category,
+    0 AS revenue,
+    0 AS cost,
+    0 AS sent_msg,
+    0 AS open_msg,
+    0 AS click_msg,
+    account_cnt
+  FROM
+    registrations)
+SELECT
+  category, date,
+  SUM(revenue) AS revenue,
+  SUM(cost) AS cost,
+  SUM(sent_msg) AS sent_msg,
+  SAFE_DIVIDE(SUM(open_msg), SUM(sent_msg)) AS open_rate,
+  SAFE_DIVIDE(SUM(click_msg), SUM(sent_msg)) AS click_rate,
+  SUM(account_cnt) AS registrations
+FROM
+  final
+GROUP BY
+  category, date;
+

@@ -1,4 +1,4 @@
-ЗАПИТ СТВОРЕННЯ ПРЕДСТАВЛЕННЯ
+--ЗАПИТ СТВОРЕННЯ ПРЕДСТАВЛЕННЯ / QUERY TO CREATE A VIEW
 
 CREATE VIEW Students.sql_module_sierkova AS 
 
@@ -39,7 +39,7 @@ JOIN `DA.account` AS ac
 ON es.id_account = ac.id
 GROUP BY s.date, sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed),
 
---об'єднуємо
+--об'єднуємо / union
 final AS
 (SELECT date,
       country,
@@ -65,7 +65,7 @@ SELECT date,
       visit_msg
 FROM msg)
 
---схлопуємо нулі
+--схлопуємо нулі / dropping the zeros
 SELECT date,
       country,
       send_interval,
@@ -82,7 +82,7 @@ GROUP BY date,
       is_verified,
       is_unsubscribed)
 
-ФІНАЛЬНИЙ ЗАПИТ
+-- ФІНАЛЬНИЙ ЗАПИТ / FINAL QUERY
 
 WITH total_count AS
 (SELECT date,

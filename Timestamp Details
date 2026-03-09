@@ -1,0 +1,7 @@
+SELECT      EXTRACT(year from TIMESTAMP_MICROS(event_timestamp)) AS year,
+      EXTRACT(month from TIMESTAMP_MICROS(event_timestamp)) AS month,
+      EXTRACT(day from TIMESTAMP_MICROS(event_timestamp)) AS day,
+      EXTRACT(hour from TIMESTAMP_MICROS(event_timestamp)) AS hour,
+      EXTRACT(minute from TIMESTAMP_MICROS(event_timestamp)) AS minutes,
+      EXTRACT(second from TIMESTAMP_MICROS(event_timestamp)) AS seconds
+FROM `data-analytics-mate.DA.event_params`;

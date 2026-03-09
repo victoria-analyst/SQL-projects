@@ -18,7 +18,6 @@ WITH
     s.date,
     p.category ),
 
-
  
   email_metrics AS (
   SELECT
@@ -52,8 +51,6 @@ WITH
     DATE_ADD(s.date, INTERVAL ems.sent_date DAY), category),
 
 
-
-
   registrations AS (
   SELECT
     s.date, category,
@@ -70,8 +67,6 @@ WITH
   ON o.item_id = p.item_id
   GROUP BY
     s.date, category ),
-
-
 
 
   final AS (

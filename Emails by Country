@@ -1,8 +1,6 @@
 ЗАПИТ СТВОРЕННЯ ПРЕДСТАВЛЕННЯ
 
-
 CREATE VIEW Students.sql_module_sierkova AS 
-
 
 (WITH ac_count AS
 (SELECT
@@ -18,7 +16,6 @@ JOIN `DA.session_params` sp
 ON s.ga_session_id = sp.ga_session_id
 GROUP BY s.date,
       sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed),
-
 
 msg AS
 (SELECT DISTINCT
@@ -42,7 +39,6 @@ JOIN `DA.account` AS ac
 ON es.id_account = ac.id
 GROUP BY s.date, sp.country, ac.send_interval, ac.is_verified, ac.is_unsubscribed),
 
-
 --об'єднуємо
 final AS
 (SELECT date,
@@ -56,9 +52,7 @@ final AS
       0 AS visit_msg
 FROM ac_count
 
-
 UNION ALL
-
 
 SELECT date,
       country,
@@ -70,7 +64,6 @@ SELECT date,
       open_msg,
       visit_msg
 FROM msg)
-
 
 --схлопуємо нулі
 SELECT date,
@@ -89,11 +82,7 @@ GROUP BY date,
       is_verified,
       is_unsubscribed)
 
-
-
-
 ФІНАЛЬНИЙ ЗАПИТ
-
 
 WITH total_count AS
 (SELECT date,
@@ -108,7 +97,6 @@ WITH total_count AS
       COUNT(DISTINCT account_cnt) OVER(partition by country) AS total_country_account_cnt,
       COUNT(DISTINCT sent_msg) OVER(partition by country) AS total_country_sent_cnt
 FROM Students.sql_module_sierkova),
-
 
 rank_total_count AS
 (SELECT date,
@@ -125,7 +113,6 @@ rank_total_count AS
       DENSE_RANK() OVER(ORDER BY total_country_account_cnt) AS rank_total_country_account_cnt,
       DENSE_RANK() OVER(ORDER BY total_country_sent_cnt) AS rank_total_country_sent_cnt
 FROM total_count)
-
 
 SELECT date,
       country,

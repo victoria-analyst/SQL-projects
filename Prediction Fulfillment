@@ -1,0 +1,23 @@
+WITH table_1 AS
+      (SELECT date, SUM(price) AS revenue
+      FROM `DA.order` AS o
+      JOIN `DA.session` AS s
+      ON o.ga_session_id = s.ga_session_id
+      JOIN `DA.product`AS p
+      ON o.item_id = p.item_id
+      GROUP BY date),
+
+table_2 AS
+      (SELECT date, SUM(revenue) OVER(ORDER BY date) AS revenue_cum, 0 AS predict_cum
+      FROM table_1
+
+  UNION ALL
+
+      SELECT date, 0 AS revenue_cum, SUM(predict) OVER(ORDER BY date) AS predict_cum
+      FROM `data-analytics-mate.DA.revenue_predict`)
+
+SELECT date, SUM(revenue_cum) AS running_revenue, SUM(predict_cum) AS running_predict, (SUM(revenue_cum) / SUM(predict_cum)) * 100 AS goal_percent
+
+FROM table_2
+GROUP BY date
+ORDER BY date;
